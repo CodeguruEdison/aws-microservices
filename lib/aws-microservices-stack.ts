@@ -8,6 +8,7 @@ import {
 } from "aws-cdk-lib/aws-lambda-nodejs";
 import { Construct } from "constructs";
 import { join } from "path";
+import { SwnDatabase } from "./database";
 
 // import * as sqs from 'aws-cdk-lib/aws-sqs';
 // https://github.com/aws/aws-cdk/tree/main/packages/aws-cdk-lib/aws-dynamodb
@@ -15,12 +16,13 @@ export class AwsMicroservicesStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
     // Product Table
-    const productTable = new Table(this, "ProductTable", {
-      partitionKey: { name: "id", type: AttributeType.STRING },
-      removalPolicy: RemovalPolicy.DESTROY,
-      billingMode: BillingMode.PAY_PER_REQUEST,
-      tableName: "product",
-    });
+    // const productTable = new Table(this, "ProductTable", {
+    //   partitionKey: { name: "id", type: AttributeType.STRING },
+    //   removalPolicy: RemovalPolicy.DESTROY,
+    //   billingMode: BillingMode.PAY_PER_REQUEST,
+    //   tableName: "product",
+    // });
+    const { productTable } = new SwnDatabase(this, "Database");
     //Product Lambda Function
     const nodeJsFunctionProps: NodejsFunctionProps = {
       bundling: {
