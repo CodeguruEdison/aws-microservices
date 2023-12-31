@@ -6,6 +6,8 @@ import {
   GetItemCommand,
   GetItemCommandInput,
   PutItemCommand,
+  QueryCommand,
+  QueryCommandInput,
   ScanCommand,
   ScanCommandInput,
   UpdateItemCommand,
@@ -16,43 +18,106 @@ import { v4 as uuidv4 } from "uuid";
 
 export const handler = async (event: APIGatewayEvent, context: Context) => {
   console.log("event", JSON.stringify(event, undefined, 2));
-  const { httpMethod, pathParameters } = event;
-  let body;
-  switch (httpMethod) {
-    case "GET": // GET /product/{id}
-      if (pathParameters !== null && pathParameters.id !== undefined) {
-        body = await getProductById(pathParameters.id);
-      } else {
-        body = await getAllProducts();
-      }
+  try {
+    const { httpMethod } = event;
+    let body;
+    switch (httpMethod) {
+      case "GET":
+        body = await handleGetRequest(event);
+        break;
 
-    case "POST": // Post /product
-      body = await createProduct(event);
+      case "POST":
+        body = await handlePostRequest(event);
+        break;
+      case "PUT":
+        body = await handlePutRequest(event);
+        break;
+      case "DELETE":
+        body = await handleDeleteRequest(event);
+        break;
+      default:
+        throw new Error(`Unsupported method "${httpMethod}"`);
+    }
+    console.log("body", body);
+    return {
+      statusCode: 200,
 
-    case "PUT": // PUT /product/{id}
-      body = await updateProduct(event);
-    case "DELETE": // DELETE /product/{id}
-      if (pathParameters === null || pathParameters.id === undefined) {
-        throw new Error(`Missing path parameter id`);
-      }
-      body = deleteProduct(pathParameters.id);
-    default:
-      throw new Error(`Unsupported method "${httpMethod}"`);
+      body: JSON.stringify({
+        message: "Success",
+        data: body,
+      }),
+    };
+  } catch (err) {
+    console.error(err);
+
+    // Check if 'err' is an instance of Error
+    const isError = err instanceof Error;
+    return {
+      statusCode: 500,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        message: "Internal Server Error",
+        errorMessage: isError ? err.message : "An unknown error occurred",
+        errorStack: isError ? err.stack : null,
+      }),
+    };
   }
 };
 
+async function handleGetRequest(event: APIGatewayEvent) {
+  const { pathParameters, queryStringParameters } = event;
+
+  if (pathParameters && pathParameters.id) {
+    if (queryStringParameters) {
+      return getProductByCategory({
+        id: pathParameters.id,
+        category: queryStringParameters.category || "",
+      });
+    } else {
+      return getProductById(pathParameters.id);
+    }
+  } else {
+    return getAllProducts();
+  }
+}
+
+async function handlePostRequest(event: APIGatewayEvent) {
+  return createProduct(event);
+}
+
+async function handlePutRequest(event: APIGatewayEvent) {
+  return updateProduct(event);
+}
+
+async function handleDeleteRequest(event: APIGatewayEvent) {
+  const { pathParameters } = event;
+
+  if (!pathParameters || !pathParameters.id) {
+    throw new Error(`Missing path parameter id`);
+  }
+  return deleteProduct(pathParameters.id);
+}
+
 const updateProduct = async (event: APIGatewayEvent) => {
   console.log("updateProduct", event);
+  const { pathParameters } = event;
+  if (!pathParameters || !pathParameters.id) {
+    throw new Error(`Missing path parameter id`);
+  }
   try {
     const updateProductRequest = JSON.parse(event.body || "{}");
-    const objectKeys = Object.keys(updateProductRequest);
+    const objectKeys = Object.keys(updateProductRequest).filter(
+      (key) => key !== "id"
+    );
     console.log(
       `updateProduction function.requestBody, ${updateProductRequest}, objectKeys: ${objectKeys}`
     );
 
     const params: UpdateItemCommandInput = {
       TableName: process.env.DYNAMODB_TABLE_NAME,
-      Key: marshall({ id: updateProductRequest.id }),
+      Key: marshall({ id: pathParameters.id }),
       UpdateExpression: `SET ${objectKeys
         .map((key) => `#${key} = :${key}`)
         .join(", ")}`,
@@ -60,13 +125,14 @@ const updateProduct = async (event: APIGatewayEvent) => {
         objectKeys.reduce((acc, key) => {
           acc[`:${key}`] = updateProductRequest[key];
           return acc;
-        }, {} as Record<string, unknown>)
+        }, {} as Record<string, unknown>),
+        { removeUndefinedValues: true }
       ),
       ExpressionAttributeNames: objectKeys.reduce((acc, key) => {
         acc[`#${key}`] = key;
         return acc;
       }, {} as Record<string, string>),
-      ReturnValues: "ALL_NEW",
+      //ReturnValues: "ALL_NEW",
     };
     console.log("params", params);
     const updateItemCommand = new UpdateItemCommand(params);
@@ -146,6 +212,34 @@ const getAllProducts = async () => {
     const response = await ddbClient.send(command);
     console.log("response", response);
     return response.Items ? response.Items.map((item) => unmarshall(item)) : {};
+  } catch (err) {
+    console.log(err);
+    throw err;
+  }
+};
+const getProductByCategory = async (querySearchParams: {
+  id: string;
+  category: string;
+}) => {
+  const { id, category } = querySearchParams;
+  console.log("getProductByCategory", JSON.stringify(querySearchParams));
+  try {
+    const params: QueryCommandInput = {
+      TableName: process.env.DYNAMODB_TABLE_NAME as string,
+      KeyConditionExpression: "#id = :id",
+      ExpressionAttributeNames: {
+        "#id": "id", // Replace with the actual name of your partition key attribute
+      },
+      ExpressionAttributeValues: {
+        ":id": { S: id },
+        ":category": { S: category },
+      },
+      FilterExpression: "contains (category, :category)",
+    };
+    const queryCommand = new QueryCommand(params);
+
+    const { Items } = await ddbClient.send(queryCommand);
+    return Items ? Items.map((item) => unmarshall(item)) : {};
   } catch (err) {
     console.log(err);
     throw err;
