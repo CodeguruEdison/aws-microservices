@@ -9,6 +9,7 @@ import { join } from "path";
 
 interface ISwnMicroservicesProps {
   productTable: ITable;
+  basketTable: ITable;
 }
 /**
  * @description
@@ -26,9 +27,36 @@ interface ISwnMicroservicesProps {
  */
 export class SwnMicroservices extends Construct {
   public readonly productMicroService: NodejsFunction;
+  public readonly basketMicroService: NodejsFunction;
   constructor(scope: Construct, id: string, props: ISwnMicroservicesProps) {
     super(scope, id);
-    const { productTable } = props;
+    const { productTable, basketTable } = props;
+    // product mictoservices
+    this.productMicroService = this.createProductMicroService(productTable);
+    // basket microservices
+    this.basketMicroService = this.createBasketMicroService(basketTable);
+  }
+  createBasketMicroService(basketTable: ITable): NodejsFunction {
+    const nodeJsFunctionProps: NodejsFunctionProps = {
+      bundling: {
+        externalModules: ["aws-sdk"],
+      },
+      environment: {
+        PRIMARY_KEY: "userName",
+        DYNAMODB_TABLE_NAME: basketTable.tableName,
+      },
+      runtime: Runtime.NODEJS_20_X,
+    };
+    const basketFunction = new NodejsFunction(this, "basketLamdaFunction", {
+      entry: join(__dirname, "/../src/basket", "index.ts"),
+      functionName: "productFuntion",
+      ...nodeJsFunctionProps,
+    });
+
+    basketTable.grantReadWriteData(basketFunction);
+    return basketFunction;
+  }
+  private createProductMicroService(productTable: ITable): NodejsFunction {
     const nodeJsFunctionProps: NodejsFunctionProps = {
       bundling: {
         externalModules: ["aws-sdk"],
@@ -40,13 +68,12 @@ export class SwnMicroservices extends Construct {
       runtime: Runtime.NODEJS_20_X,
     };
     const productFunction = new NodejsFunction(this, "productLamdaFunction", {
-      // entry:join(__dirname,'../src/product','index.ts'),
       entry: join(__dirname, "/../src/product", "index.ts"),
       functionName: "productFuntion",
       ...nodeJsFunctionProps,
     });
 
     productTable.grantReadWriteData(productFunction);
-    this.productMicroService = productFunction;
+    return productFunction;
   }
 }

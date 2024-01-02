@@ -18,16 +18,20 @@ export class AwsMicroservicesStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
-    const { productTable } = new SwnDatabase(this, "Database");
-    const { productMicroService } = new SwnMicroservices(
+    const { productTable, basketTable } = new SwnDatabase(this, "Database");
+    
+    const { productMicroService, basketMicroService } = new SwnMicroservices(
       this,
       "Microservices",
       {
         productTable: productTable,
+        basketTable: basketTable,
       }
     );
+
     const apigw = new SwnApiGateway(this, "ApiGateway", {
       productMicroService: productMicroService,
+      basketMicroService: basketMicroService,
     });
   }
 }
