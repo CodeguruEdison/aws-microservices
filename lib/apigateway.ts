@@ -40,7 +40,7 @@ export class SwnApiGateway extends Construct {
     basket.addMethod("POST");
 
     // basket/{id  GET }
-    const singleBasket = basket.addResource("{id}");
+    const singleBasket = basket.addResource("{userName}");
     singleBasket.addMethod("GET"); //GET /basket/{id}
     singleBasket.addMethod("PUT"); //PUT /basket/{id}
     singleBasket.addMethod("DELETE"); //DELETE /basket/{id}
