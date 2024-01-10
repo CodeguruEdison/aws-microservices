@@ -11,7 +11,9 @@ export class SwnApiGateway extends Construct {
   constructor(scope: Construct, id: string, props: ISwnApiGatewayProps) {
     super(scope, id);
     const { productMicroService, basketMicroService } = props;
+    
     this.createProductMicroService(productMicroService);
+
     this.createBasketMicroService(basketMicroService);
   }
 
@@ -44,5 +46,8 @@ export class SwnApiGateway extends Construct {
     singleBasket.addMethod("GET"); //GET /basket/{id}
     singleBasket.addMethod("PUT"); //PUT /basket/{id}
     singleBasket.addMethod("DELETE"); //DELETE /basket/{id}
+
+    const basketCheckout = basket.addResource("checkout");
+    basketCheckout.addMethod("POST");
   };
 }
