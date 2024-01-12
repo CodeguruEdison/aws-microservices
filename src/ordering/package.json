@@ -1,0 +1,19 @@
+{
+    "name": "@src/ordering",
+    "version": "1.0.0",
+    "main": "index.js",
+    "dependencies": {
+        "@aws-sdk/client-dynamodb": "^3.481.0",
+        "@aws-sdk/util-dynamodb": "^3.484.0",
+        "uuid": "^9.0.1"
+    },
+    "scripts": {
+        "build": "tsc",
+        "watch": "tsc -w",
+        "test": "jest",
+        "cdk": "cdk"
+    },
+    "devDependencies": {
+        "@types/uuid": "^9.0.7"
+    }
+}

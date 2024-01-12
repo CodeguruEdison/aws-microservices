@@ -10,6 +10,7 @@ import { join } from "path";
 interface ISwnMicroservicesProps {
   productTable: ITable;
   basketTable: ITable;
+  orderTable: ITable;
 }
 /**
  * @description
@@ -28,13 +29,16 @@ interface ISwnMicroservicesProps {
 export class SwnMicroservices extends Construct {
   public readonly productMicroService: NodejsFunction;
   public readonly basketMicroService: NodejsFunction;
+  public readonly orderMicroService: NodejsFunction;
   constructor(scope: Construct, id: string, props: ISwnMicroservicesProps) {
     super(scope, id);
-    const { productTable, basketTable } = props;
+    const { productTable, basketTable, orderTable } = props;
     // product mictoservices
     this.productMicroService = this.createProductMicroService(productTable);
     // basket microservices
     this.basketMicroService = this.createBasketMicroService(basketTable);
+    // order microservices
+    this.orderMicroService = this.createOrderMicroService(orderTable);
   }
   createBasketMicroService(basketTable: ITable): NodejsFunction {
     const nodeJsFunctionProps: NodejsFunctionProps = {
@@ -75,5 +79,20 @@ export class SwnMicroservices extends Construct {
 
     productTable.grantReadWriteData(productFunction);
     return productFunction;
+  }
+  private createOrderMicroService(orderTable: ITable): NodejsFunction {
+    const nodeJsFunctionProps: NodejsFunctionProps = {
+      bundling: {
+        externalModules: ["aws-sdk"],
+      },
+      runtime: Runtime.NODEJS_20_X,
+    };
+    const orderFunction = new NodejsFunction(this, "orderLamdaFunction", {
+      entry: join(__dirname, "/../src/ordering", "index.ts"),
+      functionName: "orderFuntion",
+      ...nodeJsFunctionProps,
+    });
+    orderTable.grantReadWriteData(orderFunction);
+    return orderFunction;
   }
 }

@@ -81,7 +81,7 @@ async function handlePostRequest(event: APIGatewayEvent) {
 }
 
 async function handleDeleteRequest(event: APIGatewayEvent) {
-  return deleteBasket(event.pathParameters.userName || "");
+  return deleteBasket(event?.pathParameters?.userName || "");
 }
 async function getBasketByUserName(user: { userName: string }) {
   console.log("getBasketByUserName");
