@@ -117,10 +117,25 @@ async function getAllBaskets() {
     throw error;
   }
 }
-async function checkoutBasket(event: APIGatewayProxyEvent) {
-  throw new Error("Function not implemented.");
+async function checkoutBasket(event: APIGatewayEvent) {
+  console.log("checkoutBasket");
+  const checkoutRequest = JSON.parse(event.body || "{}");
+  console.log("checkoutRequest", checkoutRequest);
+  if (checkoutRequest == null || !checkoutRequest?.userName) {
+    throw new Error("userName is required");
+  }
+  // getting existing basket
+  const basket = await getBasketByUserName({
+    userName: checkoutRequest.userName,
+  });
+  // 2. create an event json object with basket
+  // calculating total
+
+  // getting existing products
 
   // publish an event to event Bridge -this will be picked up by the order service
+
+  // remove basket
 }
 
 async function createBasket(event: APIGatewayEvent) {
